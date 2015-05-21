@@ -1,0 +1,20 @@
+Source: eos-codecs-manager
+Section: admin
+Priority: standard
+Maintainer: Mario Sanchez Prada <mario@endlessm.com>
+Build-Depends: debhelper (>= 9),
+	dh-autoreconf,
+	dh-systemd,
+	pkg-config,
+	systemd
+Standards-Version: 3.8.0
+Homepage: http://www.endlessm.com
+
+Package: eos-codecs-manager
+Architecture: i386
+Depends: ${misc:Depends},
+         bash,
+         systemd
+Description: Endless Codecs Manager
+ Helper tool to ensure that extra codecs are properly installed in
+ their right place, under the /var/lib/codecs directory.
