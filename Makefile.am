@@ -11,9 +11,14 @@ AM_DISTCHECK_CONFIGURE_FLAGS = \
 	--with-systemdunitdir='$${libdir}/systemd/system' \
 	$(NULL)
 
-EXTRA_DIST = $(systemdunit_in_file)
+EXTRA_DIST = \
+	$(systemdunit_in_file) \
+	debian \
+	$(NULL)
 
-CLEANFILES = $(systemdunit_DATA)
+CLEANFILES = \
+	$(systemdunit_DATA) \
+	$(NULL)
 
 MAINTAINERCLEANFILES = \
 	$(GITIGNORE_MAINTAINERCLEANFILES_TOPLEVEL) \
