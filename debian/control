@@ -14,6 +14,7 @@ Package: eos-codecs-manager
 Architecture: all
 Depends: ${misc:Depends},
          bash,
+         rsync,
          systemd
 Description: Endless Codecs Manager
  Helper tool to ensure that extra codecs are properly installed in

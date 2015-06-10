@@ -1,0 +1,13 @@
+# Makes sure that codecs are present under /var/lib/codecs after boot.
+
+[Unit]
+Description=Helper script to deal with extra codecs
+ConditionPathExists=/usr/share/EndlessOS/codecs
+
+[Service]
+Type=oneshot
+ExecStart=@bindir@/eos-relocate-codecs
+User=root
+
+[Install]
+WantedBy=multi-user.target
