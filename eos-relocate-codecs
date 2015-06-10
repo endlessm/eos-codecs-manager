@@ -1,0 +1,20 @@
+#!/bin/bash -e
+# Copyright (C) 2015 Endless Mobile, Inc.
+# Licensed under the GPLv2
+#
+# Note: This is a temporary workaround to transition users from previous
+# versions of the OS: codecs placed under /usr/share/EndlessOS/codecs will
+# be copied, if needed, to the right place under /var/lib/codecs.
+#
+# This script will soon be removed in future versions of the OS.
+
+source="/usr/share/EndlessOS/codecs"
+dest="/var/lib/codecs"
+
+# Copy files if they are different or not there yet (but don't delete)
+mkdir -p ${dest} && rsync -av "${source}"/ "${dest}"
+
+# /var/lib/codecs should be in the search path for ld.so
+ldconfig
+
+exit 0

@@ -1,6 +1,6 @@
-dist_bin_SCRIPTS = eos-relocate-gst-plugins
+dist_bin_SCRIPTS = eos-relocate-codecs
 
-systemdunit_in_file = eos-relocate-gst-plugins.service.in
+systemdunit_in_file = eos-relocate-codecs.service.in
 systemdunit_DATA = $(systemdunit_in_file:.service.in=.service)
 
 $(systemdunit_DATA): $(systemdunit_in_file)
