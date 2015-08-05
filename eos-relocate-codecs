@@ -12,9 +12,13 @@ source="/usr/share/EndlessOS/codecs"
 dest="/var/lib/codecs"
 
 # Copy files if they are different or not there yet (but don't delete)
-mkdir -p ${dest} && rsync -av "${source}"/ "${dest}"
+mkdir -p "${dest}"
+changes=$(rsync -ai "${source}"/ "${dest}")
 
 # /var/lib/codecs should be in the search path for ld.so
-ldconfig
+if [ -n "$changes" ]; then
+    echo -e "Changed codecs:\n$changes"
+    ldconfig -X
+fi
 
 exit 0
