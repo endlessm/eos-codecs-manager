@@ -4,6 +4,9 @@
 Description=Helper script to deal with extra codecs
 ConditionPathExists=/usr/share/EndlessOS/codecs
 
+# Don't run 2 ldconfigs concurrently
+After=ldconfig.service
+
 [Service]
 Type=oneshot
 ExecStart=@bindir@/eos-relocate-codecs
