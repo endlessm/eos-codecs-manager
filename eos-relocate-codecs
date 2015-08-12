@@ -11,6 +11,11 @@
 source="/usr/share/EndlessOS/codecs"
 dest="/var/lib/codecs"
 
+if [ ! -d "${source}" ]; then
+    echo "No codecs directory at ${source}, exiting"
+    exit 0
+fi
+
 # Copy files if they are different or not there yet (but don't delete)
 mkdir -p "${dest}"
 changes=$(rsync -ai "${source}"/ "${dest}")
