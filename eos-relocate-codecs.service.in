@@ -10,7 +10,7 @@ DefaultDependencies=no
 Conflicts=shutdown.target
 After=local-fs.target
 Before=sysinit.target shutdown.target systemd-update-done.service
-ConditonNeedsUpdate=/var
+ConditionNeedsUpdate=/var
 
 # Don't run 2 ldconfigs concurrently
 After=ldconfig.service
