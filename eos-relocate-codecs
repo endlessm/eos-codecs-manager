@@ -1,28 +1,101 @@
 #!/bin/bash -e
 # Copyright (C) 2015 Endless Mobile, Inc.
 # Licensed under the GPLv2
-#
-# Note: This is a temporary workaround to transition users from previous
-# versions of the OS: codecs placed under /usr/share/EndlessOS/codecs will
-# be copied, if needed, to the right place under /var/lib/codecs.
-#
-# This script will soon be removed in future versions of the OS.
 
-source="/usr/share/EndlessOS/codecs"
-dest="/var/lib/codecs"
+# Directory where the decrypted codecs will be installed
+dest=/var/lib/codecs
+mkdir -p ${dest}
 
-if [ ! -d "${source}" ]; then
-    echo "No codecs directory at ${source}, exiting"
+exit_with_error() {
+    echo "${1}"
     exit 0
+}
+
+# Directory where the encrypted codec packs should be installed
+source=/usr/share/EndlessOS/codecs
+if [ ! -d ${source} ]; then
+    exit_with_error "No codecs directory at ${source}, exiting"
 fi
 
-# Copy files if they are different or not there yet (but don't delete)
-mkdir -p "${dest}"
-changes=$(rsync -ai "${source}"/ "${dest}")
+# Where the GNUPGHOME directory will be for decrypting operations
+gnupghome=${dest}/.gnupg
+if [ ! -d ${gnupghome} ]; then
+    exit_with_error "No GPG home in ${gnupghome}, exiting"
+fi
+
+# The GNUPGHOME directory needs special permissions
+chmod 700 ${gnupghome}
+
+# Drop-in directory where the relevant GPG keys will be picked from
+gpgkeysdir=${gnupghome}/keys.d
+if [ ! -d ${gpgkeysdir} ]; then
+    exit_with_error "No ${gpgkeysdir} directory, exiting"
+fi
+if [ "x$(ls ${gpgkeysdir})" = "x" ]; then
+    exit_with_error "No GPG keys found in ${gpgkeysdir}, exiting"
+fi
+
+# Import all the valid GPG keys insto the local keyring
+for keyfile in ${gnupghome}/keys.d/*; do
+    echo "Trying to import GPG key from ${keyfile}..."
+    gpg --homedir ${gnupghome} --no-default-keyring --import ${keyfile} || true
+done
+
+# Wheter we will need to call ldconfig at the end or not.
+needs_update=false
+
+handle_codecpack() {
+    local codecs_pack=${1}
+
+    echo "Unpacking files for codec pack '${codec_pack}'..."
+
+    # Perform all the operations inside a temporary directory
+    local tmpdir=$(mktemp -d)
+    pushd ${tmpdir}
+
+    # Decrypt the file and extract its contents
+    local decrypted_filename=codecs-pack.xz
+    gpg --homedir ${gnupghome} \
+        --no-default-keyring \
+        --output ${decrypted_filename} \
+        --verbose \
+        ${codecs_pack}
+
+    tar Jxvf ${decrypted_filename}
+    rm ${decrypted_filename}
+
+    # Copy files if they are different or not there yet, but ignore
+    # timestamp for rsync's 'quick check' algorithm, as time will be
+    # always different as we just unpacked the contents right now.
+    local changes=$(rsync --recursive \
+                          --links \
+                          --perms \
+                          --group \
+                          --owner \
+                          --devices \
+                          --specials \
+                          --itemize-changes \
+                          --size-only ./ ${dest})
+    # Clean up
+    popd
+    rm -rf ${tmpdir}
+
+    # Let the caller know when ldconfig will need to be updated
+    if [ -n "${changes}" ]; then
+        needs_update=true
+    fi
+}
+
+# Process all the codecs in the source directory, making sure
+# that we know when we have updated something in the destination
+# directory, so that we don't call ldconfig if not really needed.
+for codecs_pack in ${source}/*; do
+    handle_codecpack ${codecs_pack}
+done
 
 # /var/lib/codecs should be in the search path for ld.so
-if [ -n "$changes" ]; then
-    echo -e "Changed codecs:\n$changes"
+if ${needs_update}; then
+    echo "Codecs changed, running 'ldconfig'..."
     ldconfig -X
 fi
 
