@@ -35,6 +35,18 @@ if [ "x$(ls ${gpgkeysdir})" = "x" ]; then
     exit_with_error "No GPG keys found in ${gpgkeysdir}, exiting"
 fi
 
+# We use a small status file to know when we can early return so that
+# we don't make the boot process longer than needed, by decrypting
+# and uncompressing files just to see if something is copied over.
+status_filepath=${dest}/.status
+previous_status=$(cat ${status_filepath} 2> /dev/null | sort)
+
+current_status=$(find ${source} -type f -exec md5sum -b '{}' ';' | sort)
+if [ "x${current_status}" = "x${previous_status}" ]; then
+    echo "No new codecs found. Nothing to do."
+    exit 0
+fi
+
 # Import all the valid GPG keys insto the local keyring
 for keyfile in ${gnupghome}/keys.d/*; do
     echo "Trying to import GPG key from ${keyfile}..."
@@ -98,5 +110,10 @@ if ${needs_update}; then
     echo "Codecs changed, running 'ldconfig'..."
     ldconfig -X
 fi
+
+# Write the status file, so that we won't waste time on next boot
+# Note that this line should only be executed if nothing has failed
+# yet, otherwise bash -e should already have bailed out by now.
+echo "${current_status}" > ${status_filepath}
 
 exit 0
