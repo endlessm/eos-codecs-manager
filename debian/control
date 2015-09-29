@@ -19,3 +19,20 @@ Depends: ${misc:Depends},
 Description: Endless Codecs Manager
  Helper tool to ensure that extra codecs are properly installed in
  their right place, under the /var/lib/codecs directory.
+
+Package: eos-codecs-pack-base
+Architecture: all
+Depends: ${misc:Depends},
+         libavcodec-extra-56,
+         chromium-codecs-ffmpeg-extra
+Conflicts: eos-core
+Description: Endless Codecs Pack (Base)
+ This metapackage depends on the relevant packages that would be
+ included in the base pack of codecs, to be activated in systems
+ where either Endless or the end user paid the relevant licenses.
+ .
+ At the moment this pack includes AAC, MP3 and H.264 decoders.
+ .
+ NOTE: This package is not meant to be installed, as it's just a
+ mechanism to group the relevant packages that would be part of
+ this pack. That's why it's declared to conflict with eos-core.
