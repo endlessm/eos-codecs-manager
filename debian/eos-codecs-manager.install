@@ -1,0 +1,2 @@
+/lib/systemd/system/eos-relocate-codecs.service
+/usr/bin/eos-relocate-codecs
