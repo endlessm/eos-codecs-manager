@@ -19,15 +19,23 @@ fi
 
 # Where the GNUPGHOME directory will be for decrypting operations
 gnupghome=${dest}/.gnupg
+
+# Drop-in directory where the relevant GPG keys will be picked from
+gpgkeysdir=${gnupghome}/keys.d
+
+# REMOVEME: Directory where the private GPG key will be shipped
+# to users, TEMPORARILY, along with the 2.5. release only.
+keyssourcedir=${source}/.gpgkeys
+if [ -d ${keyssourcedir} ]; then
+    echo "Pre-distributed GPG keys found, syncing..."
+    mkdir -p ${gpgkeysdir}
+    rsync -a ${keyssourcedir}/ ${gpgkeysdir}
+fi
+
 if [ ! -d ${gnupghome} ]; then
     exit_with_error "No GPG home in ${gnupghome}, exiting"
 fi
 
-# The GNUPGHOME directory needs special permissions
-chmod 700 ${gnupghome}
-
-# Drop-in directory where the relevant GPG keys will be picked from
-gpgkeysdir=${gnupghome}/keys.d
 if [ ! -d ${gpgkeysdir} ]; then
     exit_with_error "No ${gpgkeysdir} directory, exiting"
 fi
@@ -46,6 +54,9 @@ if [ "x${current_status}" = "x${previous_status}" ]; then
     echo "No new codecs found. Nothing to do."
     exit 0
 fi
+
+# The GNUPGHOME directory needs special permissions
+chmod 700 ${gnupghome}
 
 # Import all the valid GPG keys insto the local keyring
 for keyfile in ${gnupghome}/keys.d/*; do
