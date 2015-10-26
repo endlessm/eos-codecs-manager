@@ -2,7 +2,7 @@
 
 [Unit]
 Description=Helper script to deal with extra codecs
-ConditionPathExists=/usr/share/EndlessOS/codecs
+ConditionPathExists=/usr/share/eos-codecs-manager
 
 # Only run after an update. Needs to be in sysinit.target to run before
 # systemd-update-done.service.
