@@ -12,7 +12,7 @@ exit_with_error() {
 }
 
 # Directory where the encrypted codec packs should be installed
-source=/usr/share/EndlessOS/codecs
+source=/usr/share/eos-codecs-manager
 if [ ! -d ${source} ]; then
     exit_with_error "No codecs directory at ${source}, exiting"
 fi
