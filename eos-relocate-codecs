@@ -120,6 +120,8 @@ done
 if ${needs_update}; then
     echo "Codecs changed, running 'ldconfig'..."
     ldconfig -X
+    echo "Synchronizing file changes to disk..."
+    sync
 fi
 
 # Write the status file, so that we won't waste time on next boot
