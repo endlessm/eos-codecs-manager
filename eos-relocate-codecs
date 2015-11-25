@@ -139,6 +139,15 @@ fi
 # First of all, make sure we don't leave any stale cached file around.
 clear_cached_data
 
+# Early return in the (unlikely) scenario where no codecs pack is available.
+if [ "x$(ls ${source} 2> /dev/null)" = "x" ]; then
+    echo "No codecs found. Nothing to do."
+    exit 0
+fi
+
+# If reached  it means that new or updated codecs have been found.
+echo "New codecs found. Updating..."
+
 # The GNUPGHOME directory needs special permissions
 chmod 700 ${gnupghome}
 
