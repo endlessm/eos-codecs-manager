@@ -110,7 +110,7 @@ fi
 if [ ! -d ${gpgkeysdir} ]; then
     exit_with_error "No ${gpgkeysdir} directory, exiting"
 fi
-if [ "x$(ls ${gpgkeysdir})" = "x" ]; then
+if [ "x$(ls ${gpgkeysdir} 2> /dev/null)" = "x" ]; then
     exit_with_error "No GPG keys found in ${gpgkeysdir}, exiting"
 fi
 
