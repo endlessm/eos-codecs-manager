@@ -36,6 +36,33 @@ clear_cached_data() {
     rm -rf ${metadata_dirpath}
 }
 
+check_md5sums_for_file() {
+    local checksum_file=${1}
+
+    echo "Checking integrity for '$(basename ${checksum_file/.md5sum/})'..."
+    local bad_results="$(md5sum -c --quiet ${checksum_file})"
+
+    if [ -n "${bad_results}" ]; then
+        echo  "Results from the checksum integrity check:"
+        echo "${bad_results}"
+
+        # To prevent further issues in case we could not restore
+        # the expected files for some reason, we remove now the
+        # offending files to be as clean as possible, just in case.
+        echo "${bad_results}" | while read line; do
+            bad_file=$(echo "${line}" | cut -d ':' -f 1)
+            echo "Removing invalid file: ${bad_file}..."
+            rm -f ${bad_file}
+        done
+
+        # At least some file's checksum did not match.
+        return 1
+    fi
+
+    # No mismatch was found if reached this point.
+    return 0
+}
+
 check_all_codecs_packs() {
     local result=0
 
@@ -47,8 +74,7 @@ check_all_codecs_packs() {
     # The checksum files contain paths starting from ${dest}.
     pushd ${dest} > /dev/null
     for checksum_file in ${metadata_dirpath}/*md5sum; do
-        echo "Checking integrity for '$(basename ${checksum_file/.md5sum/})'..."
-        if ! md5sum -c ${checksum_file}; then
+        if ! check_md5sums_for_file ${checksum_file}; then
             result=1
             break
         fi
