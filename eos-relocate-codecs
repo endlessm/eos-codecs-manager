@@ -45,7 +45,7 @@ check_all_codecs_packs() {
     fi
 
     # The checksum files contain paths starting from ${dest}.
-    pushd ${dest}
+    pushd ${dest} > /dev/null
     for checksum_file in ${metadata_dirpath}/*md5sum; do
         echo "Checking integrity for '$(basename ${checksum_file/.md5sum/})'..."
         if ! md5sum -c ${checksum_file}; then
@@ -53,7 +53,7 @@ check_all_codecs_packs() {
             break
         fi
     done
-    popd
+    popd > /dev/null
 
     # result = 0 : OK / result = 1 : FAIL.
     return $result
@@ -66,7 +66,7 @@ handle_codecpack() {
 
     # Perform all the operations inside a temporary directory.
     local tmpdir=$(mktemp -d)
-    pushd ${tmpdir}
+    pushd ${tmpdir} > /dev/null
 
     # Decrypt the file and extract its contents.
     local decrypted_filename=codecs-pack.xz
@@ -92,7 +92,7 @@ handle_codecpack() {
                           --itemize-changes \
                           --size-only ./ ${dest})
     # Clean up.
-    popd
+    popd > /dev/null
     rm -rf ${tmpdir}
 
     # Return 'true' if ld.so's cache needs updating, 'false' otherwise.
