@@ -23,6 +23,10 @@ gnupghome=${dest}/.gnupg
 # Drop-in directory where the relevant GPG keys will be picked from
 gpgkeysdir=${gnupghome}/keys.d
 
+# Status file containing an MD5 checksum for every encrypted codec
+# pack shipped via OSTree, so that we can know when they change.
+status_filepath=${dest}/.status
+
 handle_codecpack() {
     local codecs_pack=${1}
 
@@ -86,10 +90,9 @@ fi
 # We use a small status file to know when we can early return so that
 # we don't make the boot process longer than needed, by decrypting
 # and uncompressing files just to see if something is copied over.
-status_filepath=${dest}/.status
 previous_status=$(cat ${status_filepath} 2> /dev/null | sort)
-
 current_status=$(find ${source} -type f -exec md5sum -b '{}' ';' | sort)
+
 if [ "x${current_status}" = "x${previous_status}" ]; then
     echo "No new codecs found. Nothing to do."
     exit 0
