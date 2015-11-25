@@ -23,6 +23,46 @@ gnupghome=${dest}/.gnupg
 # Drop-in directory where the relevant GPG keys will be picked from
 gpgkeysdir=${gnupghome}/keys.d
 
+handle_codecpack() {
+    local codecs_pack=${1}
+
+    echo "Unpacking files for codec pack '${codec_pack}'..."
+
+    # Perform all the operations inside a temporary directory.
+    local tmpdir=$(mktemp -d)
+    pushd ${tmpdir}
+
+    # Decrypt the file and extract its contents.
+    local decrypted_filename=codecs-pack.xz
+    gpg --homedir ${gnupghome} \
+        --no-default-keyring \
+        --output ${decrypted_filename} \
+        --verbose \
+        ${codecs_pack}
+
+    tar Jxvf ${decrypted_filename}
+    rm ${decrypted_filename}
+
+    # Copy files if they are different or not there yet, but ignore
+    # timestamp for rsync's 'quick check' algorithm, as time will be
+    # always different as we just unpacked the contents right now.
+    local changes=$(rsync --recursive \
+                          --links \
+                          --perms \
+                          --group \
+                          --owner \
+                          --devices \
+                          --specials \
+                          --itemize-changes \
+                          --size-only ./ ${dest})
+    # Clean up.
+    popd
+    rm -rf ${tmpdir}
+
+    # Return 'true' if ld.so's cache needs updating, 'false' otherwise.
+    test -n "${changes}"
+}
+
 # REMOVEME: Directory where the private GPG key will be shipped
 # to users, TEMPORARILY, along with the 2.5. release only.
 keyssourcedir=${source}/.gpgkeys
@@ -64,56 +104,16 @@ for keyfile in ${gnupghome}/keys.d/*; do
     gpg --homedir ${gnupghome} --no-default-keyring --import ${keyfile} || true
 done
 
-# Wheter we will need to call ldconfig at the end or not.
-needs_update=false
-
-handle_codecpack() {
-    local codecs_pack=${1}
-
-    echo "Unpacking files for codec pack '${codecs_pack}'..."
-
-    # Perform all the operations inside a temporary directory
-    local tmpdir=$(mktemp -d)
-    pushd ${tmpdir}
-
-    # Decrypt the file and extract its contents
-    local decrypted_filename=codecs-pack.xz
-    gpg --homedir ${gnupghome} \
-        --no-default-keyring \
-        --output ${decrypted_filename} \
-        --verbose \
-        ${codecs_pack}
-
-    tar Jxvf ${decrypted_filename}
-    rm ${decrypted_filename}
-
-    # Copy files if they are different or not there yet, but ignore
-    # timestamp for rsync's 'quick check' algorithm, as time will be
-    # always different as we just unpacked the contents right now.
-    local changes=$(rsync --recursive \
-                          --links \
-                          --perms \
-                          --group \
-                          --owner \
-                          --devices \
-                          --specials \
-                          --itemize-changes \
-                          --size-only ./ ${dest})
-    # Clean up
-    popd
-    rm -rf ${tmpdir}
-
-    # Let the caller know when ldconfig will need to be updated
-    if [ -n "${changes}" ]; then
-        needs_update=true
-    fi
-}
-
 # Process all the codecs in the source directory, making sure
 # that we know when we have updated something in the destination
 # directory, so that we don't call ldconfig if not really needed.
+needs_update=false
 for codecs_pack in ${source}/*; do
-    handle_codecpack ${codecs_pack}
+    if handle_codecpack ${codecs_pack}; then
+        # One call to handle_codecpack returning 'true' means that
+        # something has changed and ldconfig needs to be re-run.
+        needs_update=true;
+    fi
 done
 
 # /var/lib/codecs should be in the search path for ld.so
