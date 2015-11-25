@@ -70,7 +70,7 @@ needs_update=false
 handle_codecpack() {
     local codecs_pack=${1}
 
-    echo "Unpacking files for codec pack '${codec_pack}'..."
+    echo "Unpacking files for codec pack '${codecs_pack}'..."
 
     # Perform all the operations inside a temporary directory
     local tmpdir=$(mktemp -d)
