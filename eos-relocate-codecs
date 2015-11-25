@@ -27,6 +27,33 @@ gpgkeysdir=${gnupghome}/keys.d
 # pack shipped via OSTree, so that we can know when they change.
 status_filepath=${dest}/.status
 
+# Directory provided by the codecs packs containing additional data
+# that might be needed for other purposes (e.g. checksums).
+metadata_dirpath=${dest}/.metadata
+
+check_all_codecs_packs() {
+    local result=0
+
+    if [ "x$(ls ${metadata_dirpath}/*md5sum 2> /dev/null)" = "x" ]; then
+        echo "No checksums files found. Can't check codecs integrity."
+        return 0
+    fi
+
+    # The checksum files contain paths starting from ${dest}.
+    pushd ${dest}
+    for checksum_file in ${metadata_dirpath}/*md5sum; do
+        echo "Checking integrity for '$(basename ${checksum_file/.md5sum/})'..."
+        if ! md5sum -c ${checksum_file}; then
+            result=1
+            break
+        fi
+    done
+    popd
+
+    # result = 0 : OK / result = 1 : FAIL.
+    return $result
+}
+
 handle_codecpack() {
     local codecs_pack=${1}
 
@@ -94,8 +121,14 @@ previous_status=$(cat ${status_filepath} 2> /dev/null | sort)
 current_status=$(find ${source} -type f -exec md5sum -b '{}' ';' | sort)
 
 if [ "x${current_status}" = "x${previous_status}" ]; then
-    echo "No new codecs found. Nothing to do."
-    exit 0
+    # Before actually bailing out here, we do a quick check to make sure
+    # that the deployed codec files are the ones that are supposed to be.
+    if check_all_codecs_packs; then
+        echo "No new codecs found. Nothing to do."
+        exit 0
+    else
+        echo "Some codecs deployed could be invalid. Deploying again..."
+    fi
 fi
 
 # The GNUPGHOME directory needs special permissions
