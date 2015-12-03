@@ -49,8 +49,7 @@ check_md5sums_for_file() {
         # To prevent further issues in case we could not restore
         # the expected files for some reason, we remove now the
         # offending files to be as clean as possible, just in case.
-        echo "${bad_results}" | while read line; do
-            bad_file=$(echo "${line}" | cut -d ':' -f 1)
+        echo "${bad_results}" | while IFS=': ' read bad_file result; do
             echo "Removing invalid file: ${bad_file}..."
             rm -f ${bad_file}
         done
