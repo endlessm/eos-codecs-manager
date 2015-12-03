@@ -65,7 +65,7 @@ check_md5sums_for_file() {
 check_all_codecs_packs() {
     local result=0
 
-    if [ "x$(ls ${metadata_dirpath}/*md5sum 2> /dev/null)" = "x" ]; then
+    if [ -z "$(ls ${metadata_dirpath}/*md5sum 2> /dev/null)" ]; then
         echo "No checksums files found. Can't check codecs integrity."
         return 0
     fi
@@ -140,7 +140,7 @@ fi
 if [ ! -d ${gpgkeysdir} ]; then
     exit_with_error "No ${gpgkeysdir} directory, exiting"
 fi
-if [ "x$(ls ${gpgkeysdir} 2> /dev/null)" = "x" ]; then
+if [ -z "$(ls ${gpgkeysdir} 2> /dev/null)" ]; then
     exit_with_error "No GPG keys found in ${gpgkeysdir}, exiting"
 fi
 
@@ -165,7 +165,7 @@ fi
 clear_cached_data
 
 # Early return in the (unlikely) scenario where no codecs pack is available.
-if [ "x$(ls ${source} 2> /dev/null)" = "x" ]; then
+if [ -z "$(ls ${source} 2> /dev/null)" ]; then
     echo "No codecs found. Nothing to do."
     exit 0
 fi
