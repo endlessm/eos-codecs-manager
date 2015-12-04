@@ -23,60 +23,77 @@ gnupghome=${dest}/.gnupg
 # Drop-in directory where the relevant GPG keys will be picked from
 gpgkeysdir=${gnupghome}/keys.d
 
-# REMOVEME: Directory where the private GPG key will be shipped
-# to users, TEMPORARILY, along with the 2.5. release only.
-keyssourcedir=${source}/.gpgkeys
-if [ -d ${keyssourcedir} ]; then
-    echo "Pre-distributed GPG keys found, syncing..."
-    mkdir -p ${gpgkeysdir}
-    rsync -a ${keyssourcedir}/ ${gpgkeysdir}
-fi
-
-if [ ! -d ${gnupghome} ]; then
-    exit_with_error "No GPG home in ${gnupghome}, exiting"
-fi
-
-if [ ! -d ${gpgkeysdir} ]; then
-    exit_with_error "No ${gpgkeysdir} directory, exiting"
-fi
-if [ "x$(ls ${gpgkeysdir})" = "x" ]; then
-    exit_with_error "No GPG keys found in ${gpgkeysdir}, exiting"
-fi
-
-# We use a small status file to know when we can early return so that
-# we don't make the boot process longer than needed, by decrypting
-# and uncompressing files just to see if something is copied over.
+# Status file containing an MD5 checksum for every encrypted codec
+# pack shipped via OSTree, so that we can know when they change.
 status_filepath=${dest}/.status
-previous_status=$(cat ${status_filepath} 2> /dev/null | sort)
 
-current_status=$(find ${source} -type f -exec md5sum -b '{}' ';' | sort)
-if [ "x${current_status}" = "x${previous_status}" ]; then
-    echo "No new codecs found. Nothing to do."
-    exit 0
-fi
+# Directory provided by the codecs packs containing additional data
+# that might be needed for other purposes (e.g. checksums).
+metadata_dirpath=${dest}/.metadata
 
-# The GNUPGHOME directory needs special permissions
-chmod 700 ${gnupghome}
+clear_cached_data() {
+    rm -f ${status_filepath}
+    rm -rf ${metadata_dirpath}
+}
 
-# Import all the valid GPG keys insto the local keyring
-for keyfile in ${gnupghome}/keys.d/*; do
-    echo "Trying to import GPG key from ${keyfile}..."
-    gpg --homedir ${gnupghome} --no-default-keyring --import ${keyfile} || true
-done
+check_md5sums_for_file() {
+    local checksum_file=${1}
 
-# Wheter we will need to call ldconfig at the end or not.
-needs_update=false
+    echo "Checking integrity for '$(basename ${checksum_file/.md5sum/})'..."
+    local bad_results="$(md5sum -c --quiet ${checksum_file})"
+
+    if [ -n "${bad_results}" ]; then
+        echo  "Results from the checksum integrity check:"
+        echo "${bad_results}"
+
+        # To prevent further issues in case we could not restore
+        # the expected files for some reason, we remove now the
+        # offending files to be as clean as possible, just in case.
+        echo "${bad_results}" | while IFS=': ' read bad_file result; do
+            echo "Removing invalid file: ${bad_file}..."
+            rm -f ${bad_file}
+        done
+
+        # At least some file's checksum did not match.
+        return 1
+    fi
+
+    # No mismatch was found if reached this point.
+    return 0
+}
+
+check_all_codecs_packs() {
+    local result=0
+
+    if [ -z "$(ls ${metadata_dirpath}/*md5sum 2> /dev/null)" ]; then
+        echo "No checksums files found. Can't check codecs integrity."
+        return 0
+    fi
+
+    # The checksum files contain paths starting from ${dest}.
+    pushd ${dest} > /dev/null
+    for checksum_file in ${metadata_dirpath}/*md5sum; do
+        if ! check_md5sums_for_file ${checksum_file}; then
+            result=1
+            break
+        fi
+    done
+    popd > /dev/null
+
+    # result = 0 : OK / result = 1 : FAIL.
+    return $result
+}
 
 handle_codecpack() {
     local codecs_pack=${1}
 
     echo "Unpacking files for codec pack '${codec_pack}'..."
 
-    # Perform all the operations inside a temporary directory
+    # Perform all the operations inside a temporary directory.
     local tmpdir=$(mktemp -d)
-    pushd ${tmpdir}
+    pushd ${tmpdir} > /dev/null
 
-    # Decrypt the file and extract its contents
+    # Decrypt the file and extract its contents.
     local decrypted_filename=codecs-pack.xz
     gpg --homedir ${gnupghome} \
         --no-default-keyring \
@@ -99,27 +116,90 @@ handle_codecpack() {
                           --specials \
                           --itemize-changes \
                           --size-only ./ ${dest})
-    # Clean up
-    popd
+    # Clean up.
+    popd > /dev/null
     rm -rf ${tmpdir}
 
-    # Let the caller know when ldconfig will need to be updated
-    if [ -n "${changes}" ]; then
-        needs_update=true
-    fi
+    # Return 'true' if ld.so's cache needs updating, 'false' otherwise.
+    test -n "${changes}"
 }
+
+# REMOVEME: Directory where the private GPG key will be shipped
+# to users, TEMPORARILY, along with the 2.5. release only.
+keyssourcedir=${source}/.gpgkeys
+if [ -d ${keyssourcedir} ]; then
+    echo "Pre-distributed GPG keys found, syncing..."
+    mkdir -p ${gpgkeysdir}
+    rsync -a ${keyssourcedir}/ ${gpgkeysdir}
+fi
+
+if [ ! -d ${gnupghome} ]; then
+    exit_with_error "No GPG home in ${gnupghome}, exiting"
+fi
+
+if [ ! -d ${gpgkeysdir} ]; then
+    exit_with_error "No ${gpgkeysdir} directory, exiting"
+fi
+if [ -z "$(ls ${gpgkeysdir} 2> /dev/null)" ]; then
+    exit_with_error "No GPG keys found in ${gpgkeysdir}, exiting"
+fi
+
+# We use a small status file to know when we can early return so that
+# we don't make the boot process longer than needed, by decrypting
+# and uncompressing files just to see if something is copied over.
+previous_status=$(cat ${status_filepath} 2> /dev/null | sort)
+current_status=$(find ${source} -type f -exec md5sum -b '{}' ';' | sort)
+
+if [ "x${current_status}" = "x${previous_status}" ]; then
+    # Before actually bailing out here, we do a quick check to make sure
+    # that the deployed codec files are the ones that are supposed to be.
+    if check_all_codecs_packs; then
+        echo "No new codecs found. Nothing to do."
+        exit 0
+    else
+        echo "Some codecs deployed could be invalid. Deploying again..."
+    fi
+fi
+
+# First of all, make sure we don't leave any stale cached file around.
+clear_cached_data
+
+# Early return in the (unlikely) scenario where no codecs pack is available.
+if [ -z "$(ls ${source} 2> /dev/null)" ]; then
+    echo "No codecs found. Nothing to do."
+    exit 0
+fi
+
+# If reached  it means that new or updated codecs have been found.
+echo "New codecs found. Updating..."
+
+# The GNUPGHOME directory needs special permissions
+chmod 700 ${gnupghome}
+
+# Import all the valid GPG keys insto the local keyring
+for keyfile in ${gnupghome}/keys.d/*; do
+    echo "Trying to import GPG key from ${keyfile}..."
+    gpg --homedir ${gnupghome} --no-default-keyring --import ${keyfile} || true
+done
 
 # Process all the codecs in the source directory, making sure
 # that we know when we have updated something in the destination
 # directory, so that we don't call ldconfig if not really needed.
+needs_update=false
 for codecs_pack in ${source}/*; do
-    handle_codecpack ${codecs_pack}
+    if handle_codecpack ${codecs_pack}; then
+        # One call to handle_codecpack returning 'true' means that
+        # something has changed and ldconfig needs to be re-run.
+        needs_update=true;
+    fi
 done
 
 # /var/lib/codecs should be in the search path for ld.so
 if ${needs_update}; then
     echo "Codecs changed, running 'ldconfig'..."
     ldconfig -X
+    echo "Synchronizing file changes to disk..."
+    sync
 fi
 
 # Write the status file, so that we won't waste time on next boot
