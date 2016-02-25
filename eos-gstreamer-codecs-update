@@ -66,9 +66,20 @@ gsc_find_latest_version() {
     FLUENDO_MP3_FILENAME=${FLUENDO_MP3_PKG_URL##*/}
 }
 
+gsc_is_element_available() {
+    gst-inspect-1.0 $1 >/dev/null 2>&1
+}
+
 gsc_should_check_update() {
     local version_file=${DEST_DIR}/${VERSION_FILENAME}
 
+    # We don't do anything if an equivalent element is already available
+    if gsc_is_element_available "avdec_mp3"; then
+        gsc_exit "MP3 codec available via libav. No need to update"
+    fi
+
+    # If no similar element is available, check whether is time to look
+    # for the first or a newer version of the desired GStreamer plugins.
     if [ ! -f ${version_file} ] ; then
         CURRENT_VERSION="not installed"
     elif [ `find ${version_file} -daystart -mtime +${DAYS_CHECK}` ] || \
