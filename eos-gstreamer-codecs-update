@@ -1,0 +1,130 @@
+#!/bin/bash -e
+# Copyright (C) 2016 Endless Mobile, Inc.
+# Licensed under the GPLv2
+
+TEMP_DIR=`mktemp -d`
+DEST_DIR=/var/lib/codecs/gstreamer-1.0
+
+DAYS_CHECK=28
+VERSION_FILENAME=VERSION.txt
+
+gsc_exit() {
+   echo $1
+   rm -fr ${TEMP_DIR}
+   exit 0
+}
+
+gsc_exit_with_error() {
+   echo $1
+   [ -d ${DEST_DIR} ] || mkdir -p ${DEST_DIR}
+   touch ${DEST_DIR}/${VERSION_FILENAME}
+   rm -fr ${TEMP_DIR}
+   exit 1
+}
+
+gsc_exit_retry_with_error() {
+   echo $1
+   rm -fr ${TEMP_DIR}
+   exit 1
+}
+
+DEB_ARCH=`dpkg --print-architecture`
+PKG_MULTIARCH_LIBDIR=
+case ${DEB_ARCH} in
+    i386) PKG_MULTIARCH_LIBDIR=i386-linux-gnu ;;
+    armhf) PKG_MULTIARCH_LIBDIR=arm-linux-gnueabihf ;;
+    amd64) PKG_MULTIARCH_LIBDIR=x86_64-linux-gnu ;;
+    arm64) PKG_MULTIARCH_LIBDIR=aarch64-linux-gnu ;;
+    *) gsc_exit_with_error "Unsupported architecture ${DEB_ARCH}" ;;
+esac
+
+REPO_BASE_URL=http://httpredir.debian.org/debian
+PACKAGES_URL=${REPO_BASE_URL}/dists/testing/main/binary-${DEB_ARCH}/Packages.xz
+
+FLUENDO_MP3_PKG_NAME=gstreamer1.0-fluendo-mp3
+FLUENDO_MP3_PKG_VERSION=
+FLUENDO_MP3_PKG_SHA1SUM=
+FLUENDO_MP3_PKG_URL=
+FLUENDO_MP3_FILENAME=
+FLUENDO_MP3_SOFILE=/usr/lib/${PKG_MULTIARCH_LIBDIR}/gstreamer-1.0/libgstflump3dec.so
+
+gsc_get_field() {
+    grep-dctrl -n -s $1 ${FLUENDO_MP3_PKG_NAME} ${TEMP_DIR}/Packages
+}
+
+gsc_find_latest_version() {
+    wget "${PACKAGES_URL}" -O "${TEMP_DIR}/Packages.xz" \
+        || gsc_exit_retry_with_error "Failed to download Packages from Debian repository"
+    unxz "${TEMP_DIR}/Packages.xz"
+    local package=$(gsc_get_field "Package")
+    [ -n "${package}" ] || \
+        gsc_exit_with_error "Packages does not contain ${FLUENDO_MP3_PKG_NAME}"
+    FLUENDO_MP3_PKG_VERSION=$(gsc_get_field "Version")
+    FLUENDO_MP3_PKG_SHA1SUM=$(gsc_get_field "SHA1")
+    local filename=$(gsc_get_field "Filename")
+    FLUENDO_MP3_PKG_URL=${REPO_BASE_URL}/${filename}
+    FLUENDO_MP3_FILENAME=${FLUENDO_MP3_PKG_URL##*/}
+}
+
+gsc_is_element_available() {
+    gst-inspect-1.0 $1 >/dev/null 2>&1
+}
+
+gsc_should_check_update() {
+    local version_file=${DEST_DIR}/${VERSION_FILENAME}
+
+    # We don't do anything if an equivalent element is already available
+    if gsc_is_element_available "avdec_mp3"; then
+        gsc_exit "MP3 codec available via libav. No need to update"
+    fi
+
+    # If no similar element is available, check whether is time to look
+    # for the first or a newer version of the desired GStreamer plugins.
+    if [ ! -f ${version_file} ] ; then
+        CURRENT_VERSION="not installed"
+    elif [ `find ${version_file} -daystart -mtime +${DAYS_CHECK}` ] || \
+        [ `find ${version_file} -newermt "0 days"` ] ; then
+        CURRENT_VERSION=$(cat ${version_file})
+    else
+        gsc_exit "No need to check yet"
+    fi
+}
+
+gsc_should_update() {
+    if [ "${CURRENT_VERSION}" = "${FLUENDO_MP3_PKG_VERSION}" ] ; then
+        # Touch the VERSION so it is not checked again until ${DAYS_CHECK} passed
+        touch ${DEST_DIR}/${VERSION_FILENAME}
+        gsc_exit "Extra GStreamer plugins are up-to-date"
+    fi
+}
+
+gsc_download_gstreamer_plugins() {
+    # Get GStreamer Plugins
+    echo "Downloading ${FLUENDO_MP3_FILENAME}"
+    wget "${FLUENDO_MP3_PKG_URL}" -O "${TEMP_DIR}/${FLUENDO_MP3_FILENAME}" \
+        || gsc_exit_retry_with_error "Failed to download ${FLUENDO_MP3_FILENAME}"
+
+    # Verify SHA1 checksum of debian file
+    echo "Verifying ${TEMP_DIR}/${FLUENDO_MP3_FILENAME}"
+
+    echo "${FLUENDO_MP3_PKG_SHA1SUM}  ${TEMP_DIR}/${FLUENDO_MP3_FILENAME}" | sha1sum -c > /dev/null 2>&1 \
+	     || gsc_exit_with_error "sha1sum mismatch ${TEMP_DIR}/${FLUENDO_MP3_FILENAME}"
+}
+
+gsc_install_plugins() {
+    echo "Installing ${TEMP_DIR}/${FLUENDO_MP3_FILENAME}"
+    dpkg -x ${TEMP_DIR}/${FLUENDO_MP3_FILENAME} ${TEMP_DIR}/unpackedplugin || gsc_exit_with_error "cannot unpack plugin"
+    [ -f ${TEMP_DIR}/unpackedplugin${FLUENDO_MP3_SOFILE} ] || gsc_exit_with_error "GStreamer plugin not found"
+    mkdir -p ${DEST_DIR}
+    install -m 644 ${TEMP_DIR}/unpackedplugin${FLUENDO_MP3_SOFILE} ${DEST_DIR}
+
+    echo -n "${FLUENDO_MP3_PKG_VERSION}" > ${DEST_DIR}/${VERSION_FILENAME}
+}
+
+gsc_should_check_update
+gsc_find_latest_version
+gsc_should_update
+gsc_download_gstreamer_plugins
+gsc_install_plugins
+
+gsc_exit "Extra GStreamer plugins installed."

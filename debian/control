@@ -14,11 +14,23 @@ Package: eos-codecs-manager
 Architecture: all
 Depends: ${misc:Depends},
          bash,
+         dctrl-tools,
+         dpkg,
+         gnupg,
+         gstreamer1.0-tools,
+         network-manager,
          rsync,
-         systemd
+         systemd,
+         wget,
+         xz-utils
 Description: Endless Codecs Manager
- Helper tool to ensure that extra codecs are properly installed in
- their right place, under the /var/lib/codecs directory.
+ Collection of tools to help manage the extra codecs that can be
+ installed in the system.
+ .
+ At the moment it consists of a boot-time service that ensures that any
+ codecs pack provided with the OS image gets properly deployed (if the
+ decryption key is present) in /var/lib/codecs, as well as a downloader
+ script to allow installing additional codecs as GStreamer plugins.
 
 Package: eos-codecs-pack-base
 Architecture: all
