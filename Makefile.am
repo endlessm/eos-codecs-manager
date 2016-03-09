@@ -1,3 +1,5 @@
+SUBDIRS = src
+
 dist_bin_SCRIPTS = eos-relocate-codecs
 
 # We install the updated in the pkglibexec dir, since that's
