@@ -38,10 +38,10 @@ case ${DEB_ARCH} in
     *) gsc_exit_with_error "Unsupported architecture ${DEB_ARCH}" ;;
 esac
 
-REPO_BASE_URL=http://httpredir.debian.org/debian
-PACKAGES_URL=${REPO_BASE_URL}/dists/testing/main/binary-${DEB_ARCH}/Packages.xz
+REPO_BASE_URL=https://d1h291tw0fz159.cloudfront.net/partner
+PACKAGES_URL=${REPO_BASE_URL}/dists/endless/main/binary-${DEB_ARCH}/Packages
 
-FLUENDO_MP3_PKG_NAME=gstreamer1.0-fluendo-mp3
+FLUENDO_MP3_PKG_NAME=oneplay-gstreamer-codecs-mp3
 FLUENDO_MP3_PKG_VERSION=
 FLUENDO_MP3_PKG_SHA1SUM=
 FLUENDO_MP3_PKG_URL=
@@ -53,9 +53,8 @@ gsc_get_field() {
 }
 
 gsc_find_latest_version() {
-    wget "${PACKAGES_URL}" -O "${TEMP_DIR}/Packages.xz" \
+    wget "${PACKAGES_URL}" -O "${TEMP_DIR}/Packages" \
         || gsc_exit_retry_with_error "Failed to download Packages from Debian repository"
-    unxz "${TEMP_DIR}/Packages.xz"
     local package=$(gsc_get_field "Package")
     [ -n "${package}" ] || \
         gsc_exit_with_error "Packages does not contain ${FLUENDO_MP3_PKG_NAME}"
