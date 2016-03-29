@@ -242,7 +242,7 @@ eos_gst_report_missing_codec (EosGstCodecInfo *codec_info, EmtrEventRecorder *re
 		g_variant_builder_unref (codec_extra);
 
 		/* Report payload to the metrics server. */
-		emtr_event_recorder_record_event (recorder, EOS_CODECS_MANAGER_MISSING_CODEC, payload);
+		emtr_event_recorder_record_event_sync (recorder, EOS_CODECS_MANAGER_MISSING_CODEC, payload);
 
 		g_autofree gchar *payload_str = g_variant_print(payload, FALSE);
 		g_message ("eos-gst-codec-install: Reporting to EOS metrics system: %s", payload_str);
