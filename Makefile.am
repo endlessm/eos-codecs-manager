@@ -26,10 +26,10 @@ AM_DISTCHECK_CONFIGURE_FLAGS = \
 	$(NULL)
 
 # Integration with NetworkManager for downloader scripts
-networkscriptdir = $(sysconfdir)/network/if-up.d
-dist_networkscript_DATA = eos-gstreamer-codecs-update-nm
+networkscriptdir = $(sysconfdir)/NetworkManager/dispatcher.d
+dist_networkscript_DATA = 50-eos-gstreamer-codecs-update-nm
 install-data-hook:
-	chmod +x $(DESTDIR)$(sysconfdir)/network/if-up.d/eos-gstreamer-codecs-update-nm
+	chmod +x $(DESTDIR)$(sysconfdir)/NetworkManager/dispatcher.d/50-eos-gstreamer-codecs-update-nm
 
 EXTRA_DIST = \
 	$(systemdunit_in_files) \
