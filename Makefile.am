@@ -1,13 +1,14 @@
 SUBDIRS = src
 
+
 dist_pkglibexec_SCRIPTS = \
-	eos-relocate-codecs \
+	eos-codecs-activate \
 	eos-gstreamer-codecs-update \
 	$(NULL)
 
 # Unit services for systemd
 systemdunit_in_files = \
-	eos-relocate-codecs.service.in \
+	eos-codecs-activate.service.in \
 	eos-gstreamer-codecs-update.service.in
 
 do_subst = sed \
