@@ -15,7 +15,7 @@ After=ldconfig.service
 
 [Service]
 Type=oneshot
-ExecStart=@bindir@/eos-relocate-codecs
+ExecStart=@pkglibexecdir@/eos-relocate-codecs
 User=root
 
 [Install]

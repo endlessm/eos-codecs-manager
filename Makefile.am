@@ -1,10 +1,9 @@
 SUBDIRS = src
 
-dist_bin_SCRIPTS = eos-relocate-codecs
-
-# We install the updated in the pkglibexec dir, since that's
-# where other updaters (e.g. chromium plugins) are installed.
-dist_pkglibexec_SCRIPTS = eos-gstreamer-codecs-update
+dist_pkglibexec_SCRIPTS = \
+	eos-relocate-codecs \
+	eos-gstreamer-codecs-update \
+	$(NULL)
 
 # Unit services for systemd
 systemdunit_in_files = \
@@ -12,7 +11,6 @@ systemdunit_in_files = \
 	eos-gstreamer-codecs-update.service.in
 
 do_subst = sed \
-        -e 's|@bindir[@]|$(bindir)|g' \
         -e 's|@pkglibexecdir[@]|$(pkglibexecdir)|g'
 
 %.service : %.service.in
