@@ -37,6 +37,7 @@ PKG_CHECK_MODULES(GST_CODEC_INSTALLER, [
 
 AC_CONFIG_FILES([
 	Makefile
+	data/Makefile
 	src/Makefile
 ])
 AC_OUTPUT
