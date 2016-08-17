@@ -124,15 +124,6 @@ handle_codecpack() {
     test -n "${changes}"
 }
 
-# REMOVEME: Directory where the private GPG key will be shipped
-# to users, TEMPORARILY, along with the 2.5. release only.
-keyssourcedir=${source}/.gpgkeys
-if [ -d ${keyssourcedir} ]; then
-    echo "Pre-distributed GPG keys found, syncing..."
-    mkdir -p ${gpgkeysdir}
-    rsync -a ${keyssourcedir}/ ${gpgkeysdir}
-fi
-
 if [ ! -d ${gnupghome} ]; then
     exit_with_error "No GPG home in ${gnupghome}, exiting"
 fi
