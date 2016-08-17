@@ -20,7 +20,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-EOS_CODECS_KEY_TARGET_DIR="/var/lib/codecs/.gnupg/keys.d"
+codeckeysdir="/var/lib/codecs/.gnupg/keys.d"
 
 quit_with_code() {
     echo "Press ENTER to exit"
@@ -30,6 +30,13 @@ quit_with_code() {
 
 if [ $# -lt 1 ]; then
     echo "ERROR: Codec activation file not specified"
+    quit_with_code 1
+fi
+
+# This directory should be created on boot by the eos-codecs-activate
+# service, with the right permissions so regular users can use it.
+if [ ! -d ${codeckeysdir} ]; then
+    echo "ERROR: No ${codeckeysdir} directory, exiting"
     quit_with_code 1
 fi
 

@@ -124,13 +124,11 @@ handle_codecpack() {
     test -n "${changes}"
 }
 
-if [ ! -d ${gnupghome} ]; then
-    exit_with_error "No GPG home in ${gnupghome}, exiting"
-fi
+# We ensure that /var/lib/codecs/.gnupg/keys.d is world-writable, so that users
+# purchasing additional keys don't need special permissions to install them.
+mkdir -p ${gpgkeysdir}
+chmod a+w,a+t ${gpgkeysdir}
 
-if [ ! -d ${gpgkeysdir} ]; then
-    exit_with_error "No ${gpgkeysdir} directory, exiting"
-fi
 if [ -z "$(ls ${gpgkeysdir} 2> /dev/null)" ]; then
     exit_with_error "No GPG keys found in ${gpgkeysdir}, exiting"
 fi
