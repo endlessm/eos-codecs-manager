@@ -25,6 +25,7 @@ Depends: ${misc:Depends},
          rsync,
          systemd,
          wget,
+         xterm,
          xz-utils
 Description: Endless Codecs Manager
  Collection of tools to help manage the extra codecs that can be
