@@ -1,8 +1,8 @@
 SUBDIRS = src data
 
-
 dist_pkglibexec_SCRIPTS = \
 	eos-codecs-activate \
+	eos-codecs-install-key \
 	eos-gstreamer-codecs-update \
 	$(NULL)
 
