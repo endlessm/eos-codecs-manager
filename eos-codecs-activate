@@ -162,9 +162,6 @@ fi
 # If reached  it means that new or updated codecs have been found.
 echo "New codecs found. Updating..."
 
-# The GNUPGHOME directory needs special permissions
-chmod 700 ${gnupghome}
-
 # Import all the valid GPG keys insto the local keyring
 for keyfile in ${gnupghome}/keys.d/*; do
     echo "Trying to import GPG key from ${keyfile}..."
