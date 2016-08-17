@@ -1,0 +1,11 @@
+[Desktop Entry]
+Version=1.0
+Name=EOS Codecs Key Installer
+GenericName=EOS Codecs Key Installer
+Comment=Installs a EOS codec activation key in the system
+Exec=@pkglibexecdir@/eos-codecs-install-key %F
+Type=Application
+Terminal=false
+NoDisplay=true
+Categories=System;Utility;
+MimeType=application/x-eos-codecs-key;

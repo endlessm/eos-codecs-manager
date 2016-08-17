@@ -1,10 +1,10 @@
+do_subst = sed \
+        -e 's|@pkglibexecdir[@]|$(pkglibexecdir)|g'
+
 # Unit services for systemd
 systemdunit_in_files = \
 	eos-codecs-activate.service.in \
 	eos-gstreamer-codecs-update.service.in
-
-do_subst = sed \
-        -e 's|@pkglibexecdir[@]|$(pkglibexecdir)|g'
 
 %.service : %.service.in
 	$(AM_V_GEN) $(do_subst) $< > $@
@@ -16,11 +16,22 @@ AM_DISTCHECK_CONFIGURE_FLAGS = \
 	--with-systemdunitdir='$${libdir}/systemd/system' \
 	$(NULL)
 
+# Desktop file for the key installer
+desktop_in_files = eos-codecs-install-key.desktop.in
+
+%.desktop : %.desktop.in
+	$(AM_V_GEN) $(do_subst) $< > $@
+
+desktop_DATA = $(desktop_in_files:.desktop.in=.desktop)
+desktopdir = $(datadir)/applications/
+
 EXTRA_DIST = \
+	$(desktop_in_files) \
 	$(systemdunit_in_files) \
 	$(NULL)
 
 CLEANFILES = \
+	$(desktop_DATA) \
 	$(systemdunit_DATA) \
 	$(NULL)
 
