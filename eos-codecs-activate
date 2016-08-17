@@ -168,7 +168,7 @@ chmod 700 ${gnupghome}
 # Import all the valid GPG keys insto the local keyring
 for keyfile in ${gnupghome}/keys.d/*; do
     echo "Trying to import GPG key from ${keyfile}..."
-    gpg --homedir ${gnupghome} --no-default-keyring --import ${keyfile} || true
+    gpg --homedir ${gnupghome} --no-default-keyring --import "${keyfile}" || true
 done
 
 # Process all the codecs in the source directory, making sure
