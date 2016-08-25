@@ -25,6 +25,7 @@ Depends: ${misc:Depends},
          rsync,
          systemd,
          wget,
+         xterm,
          xz-utils
 Description: Endless Codecs Manager
  Collection of tools to help manage the extra codecs that can be
@@ -49,8 +50,6 @@ Description: Endless Codecs Pack (Base)
  This metapackage depends on the relevant packages that would be
  included in the base pack of codecs, to be activated in systems
  where either Endless or the end user paid the relevant licenses.
- .
- At the moment this pack includes AAC, MP3 and H.264 decoders.
  .
  NOTE: This package is not meant to be installed, as it's just a
  mechanism to group the relevant packages that would be part of

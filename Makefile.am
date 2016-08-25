@@ -1,28 +1,9 @@
-SUBDIRS = src
+SUBDIRS = src data
 
-dist_bin_SCRIPTS = eos-relocate-codecs
-
-# We install the updated in the pkglibexec dir, since that's
-# where other updaters (e.g. chromium plugins) are installed.
-dist_pkglibexec_SCRIPTS = eos-gstreamer-codecs-update
-
-# Unit services for systemd
-systemdunit_in_files = \
-	eos-relocate-codecs.service.in \
-	eos-gstreamer-codecs-update.service.in
-
-do_subst = sed \
-        -e 's|@bindir[@]|$(bindir)|g' \
-        -e 's|@pkglibexecdir[@]|$(pkglibexecdir)|g'
-
-%.service : %.service.in
-	$(AM_V_GEN) $(do_subst) $< > $@
-
-systemdunit_DATA = $(systemdunit_in_files:.service.in=.service)
-
-# Set systemd unit directory that follows $prefix too for distcheck.
-AM_DISTCHECK_CONFIGURE_FLAGS = \
-	--with-systemdunitdir='$${libdir}/systemd/system' \
+dist_pkglibexec_SCRIPTS = \
+	eos-codecs-activate \
+	eos-codecs-install-key \
+	eos-gstreamer-codecs-update \
 	$(NULL)
 
 # Integration with NetworkManager for downloader scripts
@@ -32,12 +13,10 @@ install-data-hook:
 	chmod +x $(DESTDIR)$(sysconfdir)/NetworkManager/dispatcher.d/50-eos-gstreamer-codecs-update-nm
 
 EXTRA_DIST = \
-	$(systemdunit_in_files) \
 	debian \
 	$(NULL)
 
 CLEANFILES = \
-	$(systemdunit_DATA) \
 	$(NULL)
 
 MAINTAINERCLEANFILES = \
