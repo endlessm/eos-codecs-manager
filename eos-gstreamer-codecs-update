@@ -109,7 +109,7 @@ gsc_download_gstreamer_plugins() {
     echo "Verifying ${TEMP_DIR}/${FLUENDO_MP3_FILENAME}"
 
     echo "${FLUENDO_MP3_PKG_SHA1SUM}  ${TEMP_DIR}/${FLUENDO_MP3_FILENAME}" | sha1sum -c > /dev/null 2>&1 \
-	     || gsc_exit_with_error "sha1sum mismatch ${TEMP_DIR}/${FLUENDO_MP3_FILENAME}"
+	|| gsc_exit_with_error "sha1sum mismatch ${TEMP_DIR}/${FLUENDO_MP3_FILENAME}"
 }
 
 gsc_install_plugins() {
