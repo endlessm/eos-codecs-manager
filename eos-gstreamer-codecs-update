@@ -48,12 +48,14 @@ FLUENDO_MP3_PKG_URL=
 FLUENDO_MP3_FILENAME=
 FLUENDO_MP3_SOFILE=/usr/lib/${PKG_MULTIARCH_LIBDIR}/gstreamer-1.0/libgstflump3dec.so
 
+WGET_COMMAND="wget -c --tries=5"
+
 gsc_get_field() {
     grep-dctrl -n -s $1 ${FLUENDO_MP3_PKG_NAME} ${TEMP_DIR}/Packages
 }
 
 gsc_find_latest_version() {
-    wget "${PACKAGES_URL}" -O "${TEMP_DIR}/Packages" \
+    ${WGET_COMMAND} "${PACKAGES_URL}" -O "${TEMP_DIR}/Packages" \
         || gsc_exit_retry_with_error "Failed to download Packages from Debian repository"
     local package=$(gsc_get_field "Package")
     [ -n "${package}" ] || \
@@ -100,7 +102,7 @@ gsc_should_update() {
 gsc_download_gstreamer_plugins() {
     # Get GStreamer Plugins
     echo "Downloading ${FLUENDO_MP3_FILENAME}"
-    wget "${FLUENDO_MP3_PKG_URL}" -O "${TEMP_DIR}/${FLUENDO_MP3_FILENAME}" \
+    ${WGET_COMMAND} "${FLUENDO_MP3_PKG_URL}" -O "${TEMP_DIR}/${FLUENDO_MP3_FILENAME}" \
         || gsc_exit_retry_with_error "Failed to download ${FLUENDO_MP3_FILENAME}"
 
     # Verify SHA1 checksum of debian file
