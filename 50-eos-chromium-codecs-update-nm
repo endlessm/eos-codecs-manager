@@ -1,0 +1,11 @@
+#!/bin/sh
+
+# We only respond to changes in connectivity
+ACTION=${2}
+[ "${ACTION}" = "connectivity-change" ] || exit 0
+[ "x${CONNECTIVITY_STATE}" = "xFULL" ] || exit 0
+
+# We are definititely online, launch the service
+/bin/systemctl --no-block start eos-chromium-codecs-update.service
+
+exit 0

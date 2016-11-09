@@ -1,0 +1,6 @@
+[Unit]
+Description=Update or install Chromium codecs
+
+[Service]
+Type=simple
+ExecStart=@pkglibexecdir@/eos-chromium-codecs-update
