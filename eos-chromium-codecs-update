@@ -1,0 +1,270 @@
+#!/bin/bash -e
+# Copyright (C) 2016 Endless Mobile, Inc.
+# Licensed under the GPLv2
+
+USERID=$(id -u)
+if [ "$USERID" != "0" ]; then
+    echo "Program requires superuser privileges"
+    exit 1
+fi
+
+DEB_ARCH=`dpkg --print-architecture`
+case ${DEB_ARCH} in
+    amd64) ;; # Only 64-bit Intel architectures are supported
+    *) echo "Unsupported architecture ${DEB_ARCH}"
+       exit 1
+       ;;
+esac
+
+CODECS_DIR=/var/lib/codecs
+DEST_DIR=${CODECS_DIR}/chromium-browser
+WGET_COMMAND="wget -c --tries=5"
+DAYS_CHECK=7
+
+CODECS_LKGV_FILE_URL="https://s3-us-west-2.amazonaws.com/abacadaba/chromium-codecs-$(arch).lkgv"
+CODECS_LKGV_FALLBACK_MAJOR_VERSION=53
+CODECS_LKGV_FALLBACK_CHROMIUM_VERSION=53.0.2785.143
+CODECS_LKGV_CHROMIUM_VERSION=
+CODECS_LKGV_MAJOR_VERSION=
+
+CODECS_VERSION=
+CODECS_URL=
+CODECS_SHA256SUM=
+CODECS_FILENAME=
+CODECS_CURRENT_VERSION=
+
+CODECS_SO_FILE=/usr/lib/chromium-browser/libs/libffmpeg.so
+CODECS_VERSION_FILE=${DEST_DIR}/VERSION.txt
+
+CHROMIUM_URL=http://archive.ubuntu.com/ubuntu
+CHROMIUM_PACKAGES=${CHROMIUM_URL}/dists/xenial-security/universe/binary-${DEB_ARCH}/Packages.xz
+CHROMIUM_PACKAGE_NAME=chromium-codecs-ffmpeg-extra
+CHROMIUM_CURRENT_VERSION=
+
+TEMP_DIR=`mktemp -d`
+
+cc_exit() {
+   echo $1
+   rm -fr ${TEMP_DIR}
+   exit 0
+}
+
+cc_exit_with_error() {
+    echo $1
+    rm -rf ${TEMP_DIR}
+    exit 1
+}
+
+cc_get_field() {
+    grep-dctrl -n -s $1 -P -X $2 ${TEMP_DIR}/Packages
+}
+
+cc_init() {
+    local chromium_changelog=/usr/share/doc/chromium-browser/changelog.Debian.gz
+    if [ ! -f ${chromium_changelog} ]; then
+        cc_exit_with_error "Couldn't find chromium's changelog. Can't check current version"
+    fi
+
+    CHROMIUM_CURRENT_VERSION=$(zcat ${chromium_changelog} | head -n 1 | cut -d "(" -f 2 | cut -d "+" -f 1)
+    if [ -z ${CHROMIUM_CURRENT_VERSION} ]; then
+        cc_exit_with_error "Couldn't determine the current version of Chromium"
+    fi
+
+    mkdir -p ${DEST_DIR}
+}
+
+# Makes sure that the VERSION file is refreshed if needed
+# or removed if it's invalid (empty).
+cc_refresh_version_file() {
+    local version_file="$1"
+    if [ ! -f ${version_file} ]; then
+        echo "Version file ${version_file} does not exist. Nothing to refresh"
+        return
+    fi
+
+    if [ ! -s ${version_file} ]; then
+        echo "Version file ${version_file} is invalid (empty). Removing..."
+        rm -f ${version_file}
+        return
+    fi
+
+    echo "Refreshing version file ${version_file}..."
+    touch ${version_file}
+}
+
+# Checks whether we have the codecs available via the preferred
+# method (unlocked via the codecs activation key).
+#
+# Returns
+#   0: codecs have been unlocked and are available
+#   1: codecs are not available or could not verified
+cc_has_codecs_unlocked() {
+    local target_file=${DEST_DIR}/$(basename ${CODECS_SO_FILE})
+
+    if [ ! -f ${target_file} ] || ! objdump -h ${target_file} > /dev/null 2>&1; then
+        echo "Not valid ${target_file} could be found"
+        rm -f ${target_file}
+        return 1
+    fi
+
+    local codecs_sumfile=${CODECS_DIR}/.metadata/eos-codecs-pack-base.md5sum
+    pushd ${CODECS_DIR} 2>&1 > /dev/null
+    if [ ! -f ${codecs_sumfile} ] || ! md5sum -c ${codecs_sumfile} > /dev/null 2>&1; then
+        echo "Could not verify that ${target_file} comes from an unlocked codecs pack"
+        return 1
+    fi
+    popd 2>&1 > /dev/null
+
+    # If reached, the file exists, is valid and we have checked comes from a
+    # codecs pack, so we cleanup any possible version file that we might have.
+    rm -f ${CODECS_VERSION_FILE}
+    return 0
+}
+
+# Checks whether we should look for updates of the codecs file
+# in the Ubuntu repository.
+cc_should_check_updates_codecs() {
+    if cc_has_codecs_unlocked; then
+        cc_exit "Codecs have already been unlocked. Nothing to do"
+    fi
+
+    local should_check_updates=true
+
+    CODECS_CURRENT_VERSION="not_installed"
+    if [ -f ${CODECS_VERSION_FILE} ] ; then
+        local current_version="$(cat ${CODECS_VERSION_FILE})"
+        local target_plugin="${DEST_DIR}/$(basename ${CODECS_SO_FILE})"
+
+        # Make sure that the current version stored is valid AND that the actual
+        # plugin file is also a valid object file before giving up on checking.
+        if [ -z "${current_version}" ] || ! nm ${target_plugin} > /dev/null 2>&1; then
+            # No point on keeping these files in this case
+            echo "Invalid version of the Chromium codecs found. Removing..."
+            rm -f ${CODECS_VERSION_FILE} ${target_plugin}
+        else
+            # If reached, we know we have a valid version file
+            CODECS_CURRENT_VERSION=${current_version}
+            if ! [ `find ${CODECS_VERSION_FILE} -daystart -mtime +${DAYS_CHECK}` ] && \
+               ! [ `find ${CODECS_VERSION_FILE} -newermt "0 days"` ] ; then
+                # It has been checked recently so nothing to do for now
+                should_check_updates=false
+            fi
+        fi
+    fi
+
+    if ! ${should_check_updates}; then
+        cc_exit "No need to check the Chromium codecs yet (version: ${CODECS_CURRENT_VERSION})"
+    fi
+
+    echo "Chromium codecs is not installed or might be too old. Will check for a new version"
+}
+
+# Fetches the metadata for the codecs from the LKGV file (falling
+# back to the hardcoded values if that file could not be fetched)
+# as well as the information about the latest version of the codecs
+# available from the Ubuntu repositories.
+cc_fetch_codecs_metadata() {
+    # Get the data for the last good known version of the codecs first
+    local filename=$(basename ${CODECS_LKGV_FILE_URL})
+    if ${WGET_COMMAND} "${CODECS_LKGV_FILE_URL}" -O "${TEMP_DIR}/${filename}"; then
+        while IFS='=' read key value; do
+            case "$key" in
+                "CHROMIUM_SUPPORTED_VERSION") CODECS_LKGV_CHROMIUM_VERSION="$value" ;;
+                "CODECS_LKGV_MAJOR_VERSION") CODECS_LKGV_MAJOR_VERSION="$value" ;;
+                *) ;;
+            esac
+        done < ${TEMP_DIR}/${filename}
+    else
+        echo "Failed to retrieve the last known good version of the Chromium codecs"
+        echo "Using fallbacks value for the Last Known Good Version"
+
+        CODECS_LKGV_CHROMIUM_VERSION="${CODECS_LKGV_FALLBACK_CHROMIUM_VERSION}"
+        CODECS_LKGV_MAJOR_VERSION="${CODECS_LKGV_FALLBACK_MAJOR_VERSION}"
+    fi
+
+    # Now search in the Ubuntu repository for the latest version of chrome
+    local packages_filename=$(basename ${CHROMIUM_PACKAGES})
+    if ! ${WGET_COMMAND} "${CHROMIUM_PACKAGES}" -O "${TEMP_DIR}/${packages_filename}"; then
+        cc_exit_with_error "Failed to download ${packages_filename} from Ubuntu's repository"
+    fi
+    unxz -f ${TEMP_DIR}/${packages_filename}
+
+    local package=$(cc_get_field "Package" ${CHROMIUM_PACKAGE_NAME})
+    if [ -z "${package}" ]; then
+        cc_exit_with_error "Packages does not contain ${CHROMIUM_PACKAGE_NAME}"
+    fi
+
+    CODECS_VERSION=$(cc_get_field "Version" ${CHROMIUM_PACKAGE_NAME})
+    CODECS_SHA256SUM=$(cc_get_field "SHA256" ${CHROMIUM_PACKAGE_NAME})
+
+    local filename=$(cc_get_field "Filename" ${CHROMIUM_PACKAGE_NAME})
+    CODECS_URL=${CHROMIUM_URL}/${filename}
+    CODECS_FILENAME=${CODECS_URL##*/}
+}
+
+# Checks whether we shold update the codecs after all, based on when
+# the current version and when the VERSION file has been updated.
+cc_should_update_codecs() {
+    if ! cc_fetch_codecs_metadata; then
+        cc_exit_with_error "An error happened fetching metadata for the the Chromium codecs"
+    fi
+
+    # Nothing to do if we already have the latest version installed
+    if [ ${CODECS_CURRENT_VERSION} = ${CODECS_VERSION} ]; then
+        # Refresh the VERSION so it is not checked again until ${DAYS_CHECK} passed
+        cc_refresh_version_file ${CODECS_VERSION_FILE}
+        cc_exit "Chromium codecs is up-to-date"
+    fi
+
+    # Current version of chromium needs to be explicitly supported in the LKGV file
+    if [ ${CHROMIUM_CURRENT_VERSION} != ${CODECS_LKGV_CHROMIUM_VERSION} ]; then
+        cc_refresh_version_file ${CODECS_VERSION_FILE}
+        cc_exit "No last good known version of the codecs for the current version of chromium (${CHROMIUM_CURRENT_VERSION})"
+    fi
+
+    # The major version of the new codecs found needs to match what the LKGV file says
+    if [[ ${CODECS_VERSION} != ${CODECS_LKGV_MAJOR_VERSION}* ]] ; then
+        cc_refresh_version_file ${CODECS_VERSION_FILE}
+        cc_exit "New version of codecs found (${CODECS_VERSION}) not supported (should match ${CODECS_LKGV_MAJOR_VERSION} major version)"
+    fi
+
+    echo "A new version of Codecs is available: ${CODECS_VERSION} (Current: ${CODECS_CURRENT_VERSION})"
+}
+
+# Downloads the actual debian package from Ubuntu's repositories
+cc_download_chromium_codecs() {
+    # Get the Chromium Codecs
+    echo "Downloading ${CODECS_FILENAME}"
+    if ! ${WGET_COMMAND} "${CODECS_URL}" -O "${TEMP_DIR}/${CODECS_FILENAME}"; then
+        cc_exit_with_error "Failed to download ${CODECS_URL}"
+    fi
+
+    # Verify SHA256 checksum of debian file
+    echo "Verifying ${TEMP_DIR}/${CODECS_FILENAME}"
+    echo "${CODECS_SHA256SUM} ${TEMP_DIR}/${CODECS_FILENAME}" | sha256sum -c > /dev/null 2>&1 || \
+    {
+        cc_exit_with_error "sha256sum mismatch ${TEMP_DIR}/${CODECS_FILENAME}"
+    }
+}
+
+# Extracts an installs the chromium codecs in the right place
+cc_install_codecs_plugin() {
+    echo "Installing ${TEMP_DIR}/${CODECS_FILENAME}"
+    if ! dpkg -x ${TEMP_DIR}/${CODECS_FILENAME} ${TEMP_DIR}/unpackedcodecs ; then
+        cc_exit_with_error "Cannot extract files from ${CODECS_FILENAME}"
+    elif ! [ -f ${TEMP_DIR}/unpackedcodecs${CODECS_SO_FILE} ]; then
+        cc_exit_with_error "Could not find ${CODECS_SO_FILE}"
+    elif ! install -m 644 ${TEMP_DIR}/unpackedcodecs${CODECS_SO_FILE} ${DEST_DIR} ; then
+        cc_exit_with_error "Could not copy ${CODECS_SO_FILE} into ${DEST_DIR}"
+    elif [ -n "${CODECS_VERSION}" ]; then
+        # Sanity check: don't ever write a VERSION file with an empty value
+        echo -n "${CODECS_VERSION}" > ${CODECS_VERSION_FILE}
+    fi
+}
+
+cc_init
+cc_should_check_updates_codecs
+cc_should_update_codecs
+cc_download_chromium_codecs
+cc_install_codecs_plugin
+cc_exit "Chromium codecs successfully updated"
