@@ -3,13 +3,19 @@ SUBDIRS = src data
 dist_pkglibexec_SCRIPTS = \
 	eos-codecs-activate \
 	eos-codecs-install-key \
+	eos-chromium-codecs-update \
 	eos-gstreamer-codecs-update \
 	$(NULL)
 
 # Integration with NetworkManager for downloader scripts
 networkscriptdir = $(sysconfdir)/NetworkManager/dispatcher.d
-dist_networkscript_DATA = 50-eos-gstreamer-codecs-update-nm
+dist_networkscript_DATA = \
+	50-eos-chromium-codecs-update-nm \
+	50-eos-gstreamer-codecs-update-nm \
+	$(NULL)
+
 install-data-hook:
+	chmod +x $(DESTDIR)$(sysconfdir)/NetworkManager/dispatcher.d/50-eos-chromium-codecs-update-nm
 	chmod +x $(DESTDIR)$(sysconfdir)/NetworkManager/dispatcher.d/50-eos-gstreamer-codecs-update-nm
 
 EXTRA_DIST = \
