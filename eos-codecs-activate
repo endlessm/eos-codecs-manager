@@ -124,6 +124,13 @@ handle_codecpack() {
     test -n "${changes}"
 }
 
+# Check for and clean away unrequired Fluendo MP3 plugin
+FLUENDO_MP3_PLUGIN="${dest}/gstreamer-1.0/libgstflump3dec.so"
+if [ -f "${FLUENDO_MP3_PLUGIN}" ]; then
+    echo "Removing unrequired Fluendo MP3 plugin."
+    rm -f "${FLUENDO_MP3_PLUGIN}"
+fi
+
 # We ensure that /var/lib/codecs/.gnupg/keys.d is world-writable, so that users
 # purchasing additional keys don't need special permissions to install them.
 mkdir -p ${gpgkeysdir}
