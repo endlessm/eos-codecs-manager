@@ -1,6 +1,0 @@
-[Unit]
-Description=Update or install codecs via GStreamer plugins
-
-[Service]
-Type=simple
-ExecStart=@pkglibexecdir@/eos-gstreamer-codecs-update
