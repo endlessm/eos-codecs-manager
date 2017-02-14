@@ -17,25 +17,18 @@ Package: eos-codecs-manager
 Architecture: any
 Depends: ${misc:Depends},
          bash,
-         dctrl-tools,
-         dpkg,
          gnupg,
-         gstreamer1.0-tools,
-         network-manager,
          rsync,
          systemd,
-         wget,
          xterm,
          xz-utils
 Description: Endless Codecs Manager
  Collection of tools to help manage the extra codecs that can be
  installed in the system.
  .
- This package consists of 3 components:
+ This package consists of 2 components:
  * A boot-time service to ensure that any codecs pack provided with
    the OS image gets deployed (if the decryption key is present).
- * A downloader script to allow downloading and installing
-   additional codecs as GStreamer plugins.
  * A helper tool to be used by gstreamer-plugins-base when some app
    tries to install missing codecs by calling gst_install_plugins_async,
    which at the moment only reports the event to the metrics system.

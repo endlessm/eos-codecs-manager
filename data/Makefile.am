@@ -3,8 +3,7 @@ do_subst = sed \
 
 # Unit services for systemd
 systemdunit_in_files = \
-	eos-codecs-activate.service.in \
-	eos-gstreamer-codecs-update.service.in
+	eos-codecs-activate.service.in
 
 %.service : %.service.in
 	$(AM_V_GEN) $(do_subst) $< > $@
