@@ -1,0 +1,12 @@
+#!/bin/sh
+
+set -e
+
+# remove legacy NetworkManager dispatcher scripts
+if [ "$1" = "configure" ]; then
+  rm -f /etc/NetworkManager/dispatcher.d/50-eos-gstreamer-codecs-update-nm \
+    /etc/NetworkManager/dispatcher.d/50-eos-chromium-codecs-update-nm
+fi
+
+#DEBHELPER#
+
