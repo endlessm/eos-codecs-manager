@@ -20,6 +20,7 @@ ConditionKernelCommandLine=!endless.live_boot
 
 [Service]
 Type=oneshot
+RemainAfterExit=yes
 ExecStart=@pkglibexecdir@/eos-codecs-activate
 User=root
 
