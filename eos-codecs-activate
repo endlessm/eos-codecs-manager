@@ -172,7 +172,7 @@ fi
 # If reached  it means that new or updated codecs have been found.
 echo "New codecs found. Updating..."
 
-# Import all the valid GPG keys insto the local keyring
+# Import all the valid GPG keys into the local keyring
 for keyfile in ${gnupghome}/keys.d/*; do
     echo "Trying to import GPG key from ${keyfile}..."
     gpg --homedir ${gnupghome} --no-default-keyring --import "${keyfile}" || true
