@@ -1,5 +1,5 @@
 #!/bin/bash -e
-# Copyright (C) 2015 Endless Mobile, Inc.
+# Copyright (C) 2015-2017 Endless Mobile, Inc.
 # Licensed under the GPLv2
 
 # Directory where the decrypted codecs will be installed
