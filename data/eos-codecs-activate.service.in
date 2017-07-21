@@ -13,6 +13,11 @@ Before=sysinit.target shutdown.target systemd-update-done.service
 # Don't run 2 ldconfigs concurrently
 After=ldconfig.service
 
+# Live images are immutable.  If they contain the codec key, this script is run
+# at image build time, so it's unnecessary to run it at boot time.  If they
+# don't, it's a no-op so also unnecessary.
+ConditionKernelCommandLine=!endless.live_boot
+
 [Service]
 Type=oneshot
 ExecStart=@pkglibexecdir@/eos-codecs-activate
