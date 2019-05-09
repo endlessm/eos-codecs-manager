@@ -36,7 +36,7 @@ Description: Endless Codecs Manager
 Package: eos-codecs-pack-base
 Architecture: all
 Depends: ${misc:Depends},
-         libavcodec-extra57,
+         libavcodec-extra58,
          chromium-codecs-ffmpeg-extra
 Conflicts: eos-core
 Description: Endless Codecs Pack (Base)
