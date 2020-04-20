@@ -115,7 +115,7 @@ handle_codecpack() {
                           --devices \
                           --specials \
                           --itemize-changes \
-                          --size-only ./ ${dest})
+                          ./ ${dest})
     # Clean up.
     popd > /dev/null
     rm -rf ${tmpdir}
