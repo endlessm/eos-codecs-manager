@@ -4,7 +4,6 @@ Priority: standard
 Maintainer: Mario Sanchez Prada <mario@endlessm.com>
 Build-Depends: debhelper (>= 9),
 	dh-autoreconf,
-	dh-systemd,
 	eos-metrics-0-dev,
 	libgstreamer1.0-dev,
 	libgstreamer-plugins-base1.0-dev,
